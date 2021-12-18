@@ -10,6 +10,10 @@ using System.Windows.Forms;
 using EasyTabs;
 using CefSharp;
 using CefSharp.WinForms;
+using System.Net;
+using System.IO;
+using ChaseBrowser.Properties;
+
 namespace ChaseBrowser
 {
     public partial class Form1 : Form
@@ -66,7 +70,14 @@ namespace ChaseBrowser
 
         private void chromiumWebBrowser1_LoadingStateChanged_1(object sender, LoadingStateChangedEventArgs e)
         {
-
+            parentTabs.Invoke(new Action(() =>
+            {
+                // This code is executed on the UI thread.
+                if (e.IsLoading)
+                {
+                    parentTabs.SelectedTab.Caption = "Loading...";
+                }
+            }));
         }
 
         private void textBox1_KeyDown(object sender, KeyEventArgs e)
@@ -90,6 +101,42 @@ namespace ChaseBrowser
                 // This code is executed on the UI thread.
                 parentTabs.SelectedTab.Caption = e.Title;
             }));
+        }
+
+        private void chromiumWebBrowser1_AddressChanged(object sender, AddressChangedEventArgs e)
+        {
+            Invoke(new Action(() => textBox1.Text = e.Address));
+            {
+                Uri uri = new Uri(e.Address);
+                {
+                    try
+                    {
+                        WebClient wc = new WebClient();
+
+                        MemoryStream memorystream = new MemoryStream(wc.DownloadData("https://" + uri.Host + "/favicon.ico"));
+                        Icon icon = new Icon(memorystream);
+                        {
+
+                            memorystream.Seek(0, SeekOrigin.Begin);
+
+                            Invoke(new Action(() =>
+                            {
+                                Icon = new Icon(memorystream);
+
+                                parentTabs.UpdateThumbnailPreviewIcon(parentTabs.Tabs.Single(t => t.Content == this));
+                                parentTabs.RedrawTabs();
+                            }));
+                        }
+                    }
+                    catch
+                    {
+                        
+                    }
+                }
+
+                Invoke(new Action(() => Parent.Refresh()));
+                
+            }
         }
     }
 }
